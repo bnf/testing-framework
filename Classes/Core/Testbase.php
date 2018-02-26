@@ -573,11 +573,13 @@ class Testbase
         $_SERVER['argv'][0] = 'index.php';
 
         $classLoader = require rtrim(realpath($instancePath . '/typo3'), '\\/') . '/../vendor/autoload.php';
-        Bootstrap::getInstance()
-            ->initializeClassLoader($classLoader)
-            ->setRequestType(TYPO3_REQUESTTYPE_BE | TYPO3_REQUESTTYPE_CLI)
-            ->baseSetup()
-            ->loadConfigurationAndInitialize(true);
+        GeneralUtility::presetApplicationContext(Bootstrap::createApplicationContext());
+        Bootstrap::defineTypo3RequestTypes();
+        Bootstrap::initializeClassLoader($classLoader);
+
+        Bootstrap::setRequestType(TYPO3_REQUESTTYPE_BE | TYPO3_REQUESTTYPE_CLI);
+        Bootstrap::baseSetup();
+        Bootstrap::loadConfigurationAndInitialize(true);
 
         if (class_exists(ExtensionConfiguration::class)) {
             $extensionConfigurationService = new ExtensionConfiguration();
@@ -585,9 +587,9 @@ class Testbase
         }
 
         $this->dumpClassLoadingInformation();
-        Bootstrap::getInstance()->loadTypo3LoadedExtAndExtLocalconf(true)
-            ->setFinalCachingFrameworkCacheConfiguration()
-            ->unsetReservedGlobalVariables();
+        Bootstrap::loadTypo3LoadedExtAndExtLocalconf(true);
+        Bootstrap::setFinalCachingFrameworkCacheConfiguration();
+        Bootstrap::unsetReservedGlobalVariables();
     }
 
     /**
@@ -630,7 +632,8 @@ class Testbase
      */
     public function loadExtensionTables()
     {
-        Bootstrap::getInstance()->loadBaseTca()->loadExtTables();
+        Bootstrap::loadBaseTca();
+        Bootstrap::loadExtTables();
     }
 
     /**
