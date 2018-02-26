@@ -46,10 +46,13 @@ call_user_func(function () {
         die('ClassLoader can\'t be loaded. Please check your path or set an environment variable \'TYPO3_PATH_ROOT\' to your root path.');
     }
     $classLoader = require $classLoaderFilepath;
-    \TYPO3\CMS\Core\Core\Bootstrap::getInstance()
-        ->initializeClassLoader($classLoader)
-        ->setRequestType(TYPO3_REQUESTTYPE_BE | TYPO3_REQUESTTYPE_CLI)
-        ->baseSetup();
+
+    $applicationContext = \TYPO3\CMS\Core\Core\Bootstrap::createApplicationContext();
+    \TYPO3\CMS\Core\Utility\GeneralUtility::presetApplicationContext($applicationContext);
+    \TYPO3\CMS\Core\Core\Bootstrap::defineTypo3RequestTypes();
+    \TYPO3\CMS\Core\Core\Bootstrap::initializeClassLoader($classLoader);
+    \TYPO3\CMS\Core\Core\Bootstrap::setRequestType(TYPO3_REQUESTTYPE_BE | TYPO3_REQUESTTYPE_CLI);
+    \TYPO3\CMS\Core\Core\Bootstrap::baseSetup();
 
     // Initialize default TYPO3_CONF_VARS
     $configurationManager = new \TYPO3\CMS\Core\Configuration\ConfigurationManager();
@@ -57,11 +60,10 @@ call_user_func(function () {
     // Avoid failing tests that rely on HTTP_HOST retrieval
     $GLOBALS['TYPO3_CONF_VARS']['SYS']['trustedHostsPattern'] = '.*';
 
-    \TYPO3\CMS\Core\Core\Bootstrap::getInstance()
-        ->disableCoreCache()
-        ->initializeCachingFramework()
-        // Set all packages to active
-        ->initializePackageManagement(\TYPO3\CMS\Core\Package\UnitTestPackageManager::class);
+    $disableCaching = true;
+    $cacheManager = \TYPO3\CMS\Core\Core\Bootstrap::createCacheManager($disableCaching);
+    // Set all packages to active
+    $packageManager = \TYPO3\CMS\Core\Core\Bootstrap::createPackageManager(\TYPO3\CMS\Core\Package\UnitTestPackageManager::class, $cacheManager);
 
     if (!\TYPO3\CMS\Core\Core\Bootstrap::usesComposerClassLoading()) {
         // Dump autoload info if in non composer mode
