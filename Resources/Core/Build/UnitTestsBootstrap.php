@@ -46,22 +46,26 @@ call_user_func(function () {
         die('ClassLoader can\'t be loaded. Please check your path or set an environment variable \'TYPO3_PATH_ROOT\' to your root path.');
     }
     $classLoader = require $classLoaderFilepath;
-    \TYPO3\CMS\Core\Core\Bootstrap::getInstance()
-        ->initializeClassLoader($classLoader)
-        ->setRequestType(TYPO3_REQUESTTYPE_BE | TYPO3_REQUESTTYPE_CLI)
-        ->baseSetup();
+
+    \TYPO3\CMS\Core\Core\SystemEnvironmentBuilder::run();
+    $applicationContext = \TYPO3\CMS\Core\Core\Bootstrap::createApplicationContext();
+    \TYPO3\CMS\Core\Utility\GeneralUtility::presetApplicationContext($applicationContext);
+    \TYPO3\CMS\Core\Core\Bootstrap::initializeClassLoader($classLoader);
+    \TYPO3\CMS\Core\Core\Bootstrap::setRequestType(TYPO3_REQUESTTYPE_BE | TYPO3_REQUESTTYPE_CLI);
+    \TYPO3\CMS\Core\Core\Bootstrap::baseSetup();
 
     // Initialize default TYPO3_CONF_VARS
     $configurationManager = new \TYPO3\CMS\Core\Configuration\ConfigurationManager();
     $GLOBALS['TYPO3_CONF_VARS'] = $configurationManager->getDefaultConfiguration();
     // Avoid failing tests that rely on HTTP_HOST retrieval
     $GLOBALS['TYPO3_CONF_VARS']['SYS']['trustedHostsPattern'] = '.*';
+    // Set cache_core to null backend, effectively disabling eg. the cache for ext_localconf and PackageManager etc.
+    $GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['cache_core']['backend'] = \TYPO3\CMS\Core\Cache\Backend\NullBackend::class;
+    $GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['cache_core']['options'] = [];
 
-    \TYPO3\CMS\Core\Core\Bootstrap::getInstance()
-        ->disableCoreCache()
-        ->initializeCachingFramework()
-        // Set all packages to active
-        ->initializePackageManagement(\TYPO3\CMS\Core\Package\UnitTestPackageManager::class);
+    $cacheManager = \TYPO3\CMS\Core\Core\Bootstrap::createCacheManager();
+    // Set all packages to active
+    $packageManager = \TYPO3\CMS\Core\Core\Bootstrap::createPackageManager(\TYPO3\CMS\Core\Package\UnitTestPackageManager::class, $cacheManager);
 
     if (!\TYPO3\CMS\Core\Core\Bootstrap::usesComposerClassLoading()) {
         // Dump autoload info if in non composer mode
